@@ -95,6 +95,7 @@ class WooVisualAudioBooks
             $order_id
         ));
 
+
         if (!empty($tokens)) {
             echo '<div class="visual-audiobook-access" style="background: #f8f9fa; border: 2px solid #28a745; border-radius: 8px; padding: 20px; margin: 20px 0;">';
             echo '<h3 style="color: #28a745; margin-top: 0;"><i class="dashicons dashicons-yes-alt"></i> Your Visual Audio Books Are Ready!</h3>';
@@ -134,6 +135,8 @@ class WooVisualAudioBooks
     public function generate_token_on_purchase($order_id)
     {
         $order = wc_get_order($order_id);
+
+
 
         if (!$order) return;
 
@@ -191,6 +194,20 @@ class WooVisualAudioBooks
             error_log("No page associated with product ID: $product_id");
             return;
         }
+
+        // Check if the token already exists by user ID and product ID and order ID
+        $existing_token = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM $this->table_name WHERE user_id = %d AND product_id = %d AND order_id = %d",
+            $user_id,
+            $product_id,
+            $order->get_id()
+        ));
+
+        if ($existing_token) {
+            // Token already exists, you might want to update it or skip
+            return;
+        }
+     
 
         // Insert token into database
         $wpdb->insert(
@@ -367,9 +384,12 @@ class WooVisualAudioBooks
             case 'last':
                 $output .= $last_name;
                 break;
+            case 'email':
+                $output .= $current_token_data->email;
+                break;
             case 'full':
             default:
-                $output .= $first_name . ' ' . $last_name;
+                $output .= $first_name . ' ' . $last_name . ' (' . $current_token_data->email . ')';
                 break;
         }
 
@@ -431,7 +451,7 @@ class WooVisualAudioBooks
             $user_id
         ));
 
-        echo '<div class="woocommerce-MyAccount-content">';
+        echo '<div class="woocommerce-content">';
         echo '<h2>' . esc_html__('Your Visual Audio Books', 'woocommerce') . '</h2>';
         echo '<table class="woocommerce-MyAccount-orders shop_table shop_table_responsive account-orders-table">';
         echo '<thead><tr><th>' . esc_html__('Access URL', 'woocommerce') . '</th><th>' . esc_html__('Product', 'woocommerce') . '</th><th>' . esc_html__('Page', 'woocommerce') . '</th><th>' . esc_html__('Created', 'woocommerce') . '</th></tr></thead>';
@@ -479,7 +499,7 @@ function add_visual_audiobook_fields()
     woocommerce_wp_checkbox(array(
         'id' => '_is_visual_audiobook',
         'label' => 'Visual Audio Book',
-        'description' => 'Check this if this product is a visual audio book'
+        'description' => 'Check this box if this Product should be tokenized'
     ));
 
     woocommerce_wp_select(array(
